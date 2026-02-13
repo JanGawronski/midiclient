@@ -2,6 +2,8 @@
 name = "midiclient"
 version = "0.1.0"
 edition = "2024"
+description = "Program for playing music together"
 
 [dependencies]
+clap = { version = "4.5.58", features = ["derive"] }
 midir = "0.10.3"

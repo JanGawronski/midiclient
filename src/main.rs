@@ -6,16 +6,28 @@ use std::{
     time::Duration,
 };
 
+use clap::Parser;
 use midir::{MidiInput, MidiOutput};
 
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    address: String,
+
+    #[arg(value_parser = clap::value_parser!(u16).range(1..))]
+    port: u16,
+}
+
 fn main() {
-    match run() {
+    let args = Args::parse();
+
+    match run(args.address, args.port) {
         Ok(_) => (),
         Err(err) => println!("Error: {}", err),
     }
 }
 
-fn run() -> Result<(), Box<dyn Error>> {
+fn run(address: String, port: u16) -> Result<(), Box<dyn Error>> {
     let midi_in = MidiInput::new("MIDI client input")?;
     let midi_out = MidiOutput::new("MIDI client output")?;
 
@@ -65,7 +77,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         .collect::<Vec<_>>();
 
     let socket = UdpSocket::bind("0.0.0.0:0")?;
-    socket.connect("192.168.1.19:13629")?;
+    socket.connect(format!("{address}:{port}"))?;
 
     let recv_socket = socket.try_clone()?;
     spawn(move || loop {
