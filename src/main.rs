@@ -1,6 +1,6 @@
 use std::{error::Error, net::UdpSocket, sync::mpsc::channel, thread::spawn};
 
-use midir::{Ignore, MidiInput, MidiOutput, MidiOutputPort};
+use midir::{MidiInput, MidiOutput};
 
 fn main() {
     match run() {
@@ -32,10 +32,10 @@ fn run() -> Result<(), Box<dyn Error>> {
 
     let (tx, rx) = channel();
 
-    let connections = midi_in
+    let _inputs = midi_in
         .ports()
         .iter()
-        .map(|port| {
+        .filter_map(|port| {
             let port_name = midi_in.port_name(&port).unwrap();
             if !port_name.contains("midir-forward") {
                 let local_tx = tx.clone();
@@ -46,7 +46,7 @@ fn run() -> Result<(), Box<dyn Error>> {
                     .connect(
                         &port,
                         "midir-forward",
-                        move |stamp, message, _| {
+                        move |_stamp, message, _| {
                             let _ = local_tx.send((message.to_owned(), true));
                         },
                         (),
@@ -58,20 +58,21 @@ fn run() -> Result<(), Box<dyn Error>> {
         })
         .collect::<Vec<_>>();
 
-    spawn(move || {
-        let socket = UdpSocket::bind("127.0.0.1:50000").unwrap();
-        loop {
-            let mut buf: [u8; 64] = [0; 64];
-            let (number_of_bytes, _) = socket.recv_from(&mut buf).unwrap();
-            let _ = tx.send(((&mut buf[..number_of_bytes]).to_vec(), false));
-        }
+    let socket = UdpSocket::bind("0.0.0.0:0")?;
+    socket.connect("192.168.1.19:13629")?;
+
+    let recv_socket = socket.try_clone()?;
+    spawn(move || loop {
+        let mut buf: [u8; 64] = [0; 64];
+        let number_of_bytes = recv_socket.recv(&mut buf).unwrap();
+        let _ = tx.send(((&mut buf[..number_of_bytes]).to_vec(), false));
     });
 
-    let socket = UdpSocket::bind("127.0.0.1:50001")?;
     for (message, is_local) in rx {
+        println!("{:?}", message);
         let _ = conn_out.send(&message);
         if is_local {
-            let _ = socket.send_to(&message, "127.0.0.1:50000");
+            let _ = socket.send(&message);
         }
     }
 
