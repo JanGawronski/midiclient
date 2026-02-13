@@ -79,6 +79,9 @@ fn run(address: String, port: u16) -> Result<(), Box<dyn Error>> {
     let socket = UdpSocket::bind("0.0.0.0:0")?;
     socket.connect(format!("{address}:{port}"))?;
 
+    let output_multicast_socket = UdpSocket::bind("0.0.0.0:0")?;
+    output_multicast_socket.connect("225.0.0.37:21928")?;
+
     let recv_socket = socket.try_clone()?;
     spawn(move || loop {
         let mut buf: [u8; 64] = [0; 64];
@@ -95,6 +98,7 @@ fn run(address: String, port: u16) -> Result<(), Box<dyn Error>> {
     for (message, is_local) in rx {
         println!("{:?}", message);
         let _ = conn_out.send(&message);
+        let _ = output_multicast_socket.send(&message);
         if is_local {
             let _ = socket.send(&message);
         }
