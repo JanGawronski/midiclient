@@ -1,4 +1,10 @@
-use std::{error::Error, net::UdpSocket, sync::mpsc::channel, thread::spawn};
+use std::{
+    error::Error,
+    net::UdpSocket,
+    sync::mpsc::channel,
+    thread::{sleep, spawn},
+    time::Duration,
+};
 
 use midir::{MidiInput, MidiOutput};
 
@@ -66,6 +72,12 @@ fn run() -> Result<(), Box<dyn Error>> {
         let mut buf: [u8; 64] = [0; 64];
         let number_of_bytes = recv_socket.recv(&mut buf).unwrap();
         let _ = tx.send(((&mut buf[..number_of_bytes]).to_vec(), false));
+    });
+
+    let keep_alive_socket = socket.try_clone()?;
+    spawn(move || loop {
+        let _ = keep_alive_socket.send(&[]);
+        sleep(Duration::from_secs(10));
     });
 
     for (message, is_local) in rx {
