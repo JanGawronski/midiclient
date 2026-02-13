@@ -80,7 +80,7 @@ fn run(address: String, port: u16) -> Result<(), Box<dyn Error>> {
     socket.connect(format!("{address}:{port}"))?;
 
     let output_multicast_socket = UdpSocket::bind("0.0.0.0:0")?;
-    output_multicast_socket.connect("225.0.0.37:21928")?;
+    output_multicast_socket.connect("225.0.0.37:21929")?;
 
     let recv_socket = socket.try_clone()?;
     spawn(move || loop {
